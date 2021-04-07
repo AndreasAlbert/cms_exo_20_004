@@ -3,8 +3,6 @@
 ## Setup
 
 ```bash
-
-```
 # Getting the code
 wget https://bazaar.launchpad.net/~ma5dev/madanalysis5/v1.9_beta/tarball
 tar xf tarball
