@@ -15,7 +15,7 @@ template <class Type>
 vector<const Type*> filter_collection(vector<Type> objects, float ptmin, float etamax){
   // Helper function to select subset of objects passing pt and eta selections
   vector<const Type*> filtered;
-  for(auto obj:objects){
+  for(auto & obj:objects){
     if(obj.pt() < ptmin){
       continue;
     }
