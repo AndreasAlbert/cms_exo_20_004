@@ -52,13 +52,13 @@ bool cms_exo_20_004::Initialize(const MA5::Configuration& cfg, const std::map<st
   cout << "BEGIN Initialization" << endl;
 
   vector<string> common = {
+    "ptmiss",
     "veto_electron",
     "veto_muon",
     "veto_tau",
     "veto_btag",
     "veto_photon",
     "dphijm",
-    "ptmiss",
   };
   vector<string> monojet = {
     "leadak4_pt",
@@ -162,13 +162,13 @@ bool cms_exo_20_004::Execute(SampleFormat& sample, const EventFormat& event)
     // std::cout << ibin << " " << name << " " << event.rec()->MET().pt() << " " << pass << std::endl;
     if (not Manager()->ApplyCut(pass, name)) return true;
   }
+  if (not Manager()->ApplyCut(ptmiss>250,       "ptmiss")) return true;
   if (not Manager()->ApplyCut(electrons.size() == 0,             "veto_electron")) return true;
   if (not Manager()->ApplyCut(muons.size() == 0,                 "veto_muon")) return true;
   if (not Manager()->ApplyCut(taus.size() == 0,                  "veto_tau")) return true;
   if (not Manager()->ApplyCut(veto_btag,                         "veto_btag")) return true;
   if (not Manager()->ApplyCut(photons.size() == 0,               "veto_photon")) return true;
   if (not Manager()->ApplyCut(dphijm>DPHI_JET_MET_MIN,           "dphijm")) return true;
-  if (not Manager()->ApplyCut(ptmiss>250,       "ptmiss")) return true;
   if (not Manager()->ApplyCut(leadak4_pt>LEADAK4_PT_MIN,         "leadak4_pt")) return true;
   if (not Manager()->ApplyCut(fabs(leadak4_eta)<LEADAK4_ETA_MAX, "leadak4_eta")) return true;
 
