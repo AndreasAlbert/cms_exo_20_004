@@ -8,7 +8,7 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 vector<int> monojet_bins = {
-  250,  280,  310,  340,  370,  400,  430,  470,  510, 550,  590,  640,  690,  740,  790,  840,  900,  960, 1020, 1090, 1160, 1250, 1400, 999999
+  250,  280,  310,  340,  370,  400,  430,  470,  510, 550,  590,  640,  690,  740,  790,  840,  900,  960, 1020, 1090, 1160, 1250, 99999,
 };
 
 template <class Type>
@@ -69,7 +69,7 @@ bool cms_exo_20_004::Initialize(const MA5::Configuration& cfg, const std::map<st
 
   // Create region selections
   Manager()->AddRegionSelection("monojet_SR");
-  for(int ibin=0; ibin<23; ibin++) {
+  for(int ibin=0; ibin<monojet_bins.size()-1; ibin++) {
     char name[50];
     sprintf(name, "monojet_SR_bin%d", ibin);
     Manager()->AddRegionSelection(name);
@@ -155,7 +155,7 @@ bool cms_exo_20_004::Execute(SampleFormat& sample, const EventFormat& event)
   // Histogram filling
   Manager()->FillHisto("ptmiss", event.rec()->MET().pt() );
   // Cut application
-  for(int ibin=0; ibin<23; ibin++){
+  for(int ibin=0; ibin<monojet_bins.size()-1; ibin++){
     char name[50];
     sprintf(name, "monojet_SR_bin%d", ibin);
     bool pass = (ptmiss > monojet_bins.at(ibin)) && (ptmiss < monojet_bins.at(ibin+1));
