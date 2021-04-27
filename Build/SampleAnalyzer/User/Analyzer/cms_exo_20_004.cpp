@@ -12,9 +12,9 @@ vector<int> monojet_bins = {
 };
 
 template <class Type>
-vector<const Type*> filter_collection(vector<Type> objects, float ptmin, float etamax){
+vector<Type> filter_collection(vector<Type> objects, float ptmin, float etamax){
   // Helper function to select subset of objects passing pt and eta selections
-  vector<const Type*> filtered;
+  vector<Type> filtered;
   for(auto & obj:objects){
     if(obj.pt() < ptmin){
       continue;
@@ -22,29 +22,28 @@ vector<const Type*> filter_collection(vector<Type> objects, float ptmin, float e
     if(fabs(obj.eta()) > etamax){
       continue;
     }
-    filtered.push_back(&obj);
+    filtered.push_back(obj);
   }
-  SORTER->sort(filtered, PTordering);
   return filtered;
 }
 
-bool has_b_tag(vector<const RecJetFormat*> jets, float ptmin, float etamax){
+bool has_b_tag(vector<RecJetFormat> jets, float ptmin, float etamax){
   // Returns true if a b jet is found
   for(auto jet : jets) {
-    if (jet->btag() and jet->pt() > ptmin and fabs(jet->eta())<etamax) {
+    if (jet.btag() and jet.pt() > ptmin and fabs(jet.eta())<etamax) {
       return true;
     }
   }
   return false;
 }
 
-float dphi_jet_met(vector<const RecJetFormat*> jets, const ParticleBaseFormat & MET, float pt_min) {
+float dphi_jet_met(vector<RecJetFormat> jets, const ParticleBaseFormat & MET, float pt_min) {
   float dphijm = 5;
   for(int ijet=0; ijet < min(4, int(jets.size())); ijet++) {
-    if(jets.at(ijet)->pt() < pt_min){
+    if(jets.at(ijet).pt() < pt_min){
       continue;
     }
-    dphijm = min(dphijm, jets.at(ijet)->dphi_0_pi(MET));
+    dphijm = min(dphijm, jets.at(ijet).dphi_0_pi(MET));
   }
   return dphijm;
 }
@@ -136,23 +135,18 @@ bool cms_exo_20_004::Execute(SampleFormat& sample, const EventFormat& event)
 
   if (event.rec()==0) {return true;}
   
-  vector<const RecJetFormat*> jets, bjets;
-  vector<const RecLeptonFormat*> muons, electrons;
-  vector<const RecTauFormat*> taus;
-  vector<const RecPhotonFormat*> photons;
-
   // Filtered collections
-  electrons = filter_collection<RecLeptonFormat>(event.rec()->electrons(), CUT_ELECTRON_PT_MIN, CUT_ELECTRON_ETA_MAX);
-  muons     = filter_collection<RecLeptonFormat>(event.rec()->muons(),     CUT_MUON_PT_MIN,     CUT_MUON_ETA_MAX    );
-  taus      = filter_collection<RecTauFormat   >(event.rec()->taus(),      CUT_TAU_PT_MIN,      CUT_TAU_ETA_MAX     );
-  photons   = filter_collection<RecPhotonFormat>(event.rec()->photons(),   CUT_PHO_PT_MIN,      CUT_PHO_ETA_MAX     );
-  jets      = filter_collection<RecJetFormat   >(event.rec()->jets(),      20.0,                999                 );
+  vector<RecLeptonFormat> electrons = filter_collection<RecLeptonFormat>(event.rec()->electrons(), CUT_ELECTRON_PT_MIN, CUT_ELECTRON_ETA_MAX);
+  vector<RecLeptonFormat> muons     = filter_collection<RecLeptonFormat>(event.rec()->muons(),     CUT_MUON_PT_MIN,     CUT_MUON_ETA_MAX    );
+  vector<RecTauFormat> taus      = filter_collection<RecTauFormat   >(event.rec()->taus(),      CUT_TAU_PT_MIN,      CUT_TAU_ETA_MAX     );
+  vector<RecPhotonFormat> photons   = filter_collection<RecPhotonFormat>(event.rec()->photons(),   CUT_PHO_PT_MIN,      CUT_PHO_ETA_MAX     );
+  vector<RecJetFormat> jets      = filter_collection<RecJetFormat   >(event.rec()->jets(),      20.0,                999                 );
 
   
   // Quantities to cut on
   float dphijm      = dphi_jet_met(jets, event.rec()->MET(), 30);
-  float leadak4_pt  = jets.size() > 0 ? jets.at(0)->pt() : 0;
-  float leadak4_eta = jets.size() > 0 ? jets.at(0)->eta() : -999;
+  float leadak4_pt  = jets.size() > 0 ? jets.at(0).pt() : 0;
+  float leadak4_eta = jets.size() > 0 ? jets.at(0).eta() : -999;
   bool veto_btag = not has_b_tag(jets, CUT_BTAG_PT_MIN, CUT_BTAG_ETA_MAX);
   float ptmiss = event.rec()->MET().pt();
 
