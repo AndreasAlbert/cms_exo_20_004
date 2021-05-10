@@ -157,7 +157,7 @@ bool cms_exo_20_004::Initialize(const MA5::Configuration& cfg, const std::map<st
   Manager()->AddRegionSelection("monojet_SR");
   for(size_t ibin=0; ibin<monojet_bins.size()-1; ibin++) {
     char region_name[50];
-    sprintf(name, "monojet_SR_bin%d", int(ibin));
+    sprintf(region_name, "monojet_SR_bin%d", int(ibin));
     Manager()->AddRegionSelection(region_name);
 
     // Region specific cuts
@@ -329,6 +329,7 @@ bool cms_exo_20_004::Execute(SampleFormat& sample, const EventFormat& event)
     cuts[name] = pass;
   }
 
+
   cuts["ptmiss"]            = ptmiss > 250;
   cuts["veto_electron"]     = electrons.size() == 0;
   cuts["veto_muon"]         = muons.size() == 0;
@@ -344,10 +345,17 @@ bool cms_exo_20_004::Execute(SampleFormat& sample, const EventFormat& event)
   cuts["leadak8_loose_tag"] = is_loose_tag;
   cuts["leadak8_tight_tag"] = is_tight_tag;
 
-  for( auto const & item : cuts) {
-    string cut_name = item.first;
-    bool cut_passes = item.second;
-    Manager()->ApplyCut(cut_passes, cut_name);
+  // Sanity checks
+  if(cuts["monov_SR_bin0"] and not cuts["ptmiss"]) {
+    throw;
+  }
+  // for( auto const & item : cuts) {
+  for( auto item = cuts.rbegin(); item != cuts.rend(); item++) {
+    string cut_name = (*item).first;
+    bool cut_passes = (*item).second;
+    if (not Manager()->ApplyCut(cut_passes, cut_name)){
+      return true;
+    };
   }
   return true;
 }
