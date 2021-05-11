@@ -1,7 +1,7 @@
 #include "SampleAnalyzer/User/Analyzer/cms_exo_20_004.h"
 using namespace MA5;
 using namespace std;
-
+#include <cassert>
 // -----------------------------------------------------------------------------
 // Initialize
 // function called one time at the beginning of the analysis
@@ -47,10 +47,32 @@ float dphi_jet_met(vector<RecJetFormat> jets, const ParticleBaseFormat & MET, fl
   }
   return dphijm;
 }
+
+string monojet_bin_name(int ibin, int year){
+    char name[50];
+    if(ibin<0) {
+      sprintf(name, "monojet_SR_%d", year);
+    } else {
+      sprintf(name, "monojet_SR_%d_bin%d", year, ibin);
+    }
+    return string(name);
+}
+void cms_exo_20_004::InitializeRegions() {
+  for(auto year : {2016, 2017, 2018}){
+    Manager()->AddRegionSelection(monojet_bin_name(-1, year));
+
+    for(size_t ibin=0; ibin<monojet_bins.size()-1; ibin++) {
+      Manager()->AddRegionSelection(monojet_bin_name(int(ibin), year));
+    }
+  }
+}
 bool cms_exo_20_004::Initialize(const MA5::Configuration& cfg, const std::map<std::string,std::string>& parameters)
 {
   cout << "BEGIN Initialization" << endl;
 
+  InitializeRegions();
+
+  vector<string> cut_order;
   vector<string> common = {
     "ptmiss",
     "veto_electron",
@@ -59,30 +81,29 @@ bool cms_exo_20_004::Initialize(const MA5::Configuration& cfg, const std::map<st
     "veto_btag",
     "veto_photon",
     "dphijm",
-  };
-  vector<string> monojet = {
     "leadak4_pt",
     "leadak4_eta",
-    // "leadak4_id"
   };
-  monojet.insert(monojet.begin(), common.begin(), common.end());
+  for(auto const & cut : common) {
+    Manager()->AddCut(cut);
+    cut_order.push_back(cut);
+  }
 
   // Create region selections
-  Manager()->AddRegionSelection("monojet_SR");
-  for(int ibin=0; ibin<monojet_bins.size()-1; ibin++) {
-    char name[50];
-    sprintf(name, "monojet_SR_bin%d", ibin);
-    Manager()->AddRegionSelection(name);
-
-    // Region specific cuts
-    Manager()->AddCut(name,  name);
+  for(auto year : {2016,2017,2018}) {
+    for(size_t ibin=0; ibin<monojet_bins.size()-1; ibin++) {
+      // Region specific cuts
+      auto region_name = monojet_bin_name(ibin, year);
+      Manager()->AddCut(region_name,  region_name);
+      cut_order.push_back(region_name);
+    }
   }
 
-  for(auto cut : monojet) {
-    Manager()->AddCut(cut);
-  }
+  // Sanity check: No duplicate cut definitions
+  set<string> set_of_cuts( cut_order.begin(), cut_order.end() );
+  assert(set_of_cuts.size() == cut_order.size());
 
-  Manager()->AddHisto("ptmiss", 15,0,1400, "monojet_SR");
+  // Manager()->AddHisto("ptmiss", 15,0,1400, "monojet_SR");
 
   cout << "END   Initialization" << endl;
   return true;
@@ -153,15 +174,8 @@ bool cms_exo_20_004::Execute(SampleFormat& sample, const EventFormat& event)
 
 
   // Histogram filling
-  Manager()->FillHisto("ptmiss", event.rec()->MET().pt() );
+  // Manager()->FillHisto("ptmiss", event.rec()->MET().pt() );
   // Cut application
-  for(int ibin=0; ibin<monojet_bins.size()-1; ibin++){
-    char name[50];
-    sprintf(name, "monojet_SR_bin%d", ibin);
-    bool pass = (ptmiss > monojet_bins.at(ibin)) && (ptmiss < monojet_bins.at(ibin+1));
-    // std::cout << ibin << " " << name << " " << event.rec()->MET().pt() << " " << pass << std::endl;
-    if (not Manager()->ApplyCut(pass, name)) return true;
-  }
   if (not Manager()->ApplyCut(ptmiss>250,       "ptmiss")) return true;
   if (not Manager()->ApplyCut(electrons.size() == 0,             "veto_electron")) return true;
   if (not Manager()->ApplyCut(muons.size() == 0,                 "veto_muon")) return true;
@@ -172,6 +186,13 @@ bool cms_exo_20_004::Execute(SampleFormat& sample, const EventFormat& event)
   if (not Manager()->ApplyCut(leadak4_pt>LEADAK4_PT_MIN,         "leadak4_pt")) return true;
   if (not Manager()->ApplyCut(fabs(leadak4_eta)<LEADAK4_ETA_MAX, "leadak4_eta")) return true;
 
+  for(auto year : {2016, 2017, 2018}) {
+    for(size_t ibin=0; ibin<monojet_bins.size()-1; ibin++){
+      auto cut_name = monojet_bin_name(ibin, year);
+      bool pass = (ptmiss > monojet_bins.at(ibin)) && (ptmiss < monojet_bins.at(ibin+1));
+      if (not Manager()->ApplyCut(pass, cut_name)) return true;
+    }
+  }
 
   return true;
 }
