@@ -99,6 +99,37 @@ bool cms_exo_20_004::Initialize(const MA5::Configuration& cfg, const std::map<st
     }
   }
 
+  // HEM veto is for 2018 only
+  string regions_2018[] = {
+    "monojet_SR_2018",
+    "monojet_SR_2018_bin0",
+    "monojet_SR_2018_bin1",
+    "monojet_SR_2018_bin2",
+    "monojet_SR_2018_bin3",
+    "monojet_SR_2018_bin4",
+    "monojet_SR_2018_bin5",
+    "monojet_SR_2018_bin6",
+    "monojet_SR_2018_bin7",
+    "monojet_SR_2018_bin8",
+    "monojet_SR_2018_bin9",
+    "monojet_SR_2018_bin10",
+    "monojet_SR_2018_bin11",
+    "monojet_SR_2018_bin12",
+    "monojet_SR_2018_bin13",
+    "monojet_SR_2018_bin14",
+    "monojet_SR_2018_bin15",
+    "monojet_SR_2018_bin16",
+    "monojet_SR_2018_bin17",
+    "monojet_SR_2018_bin18",
+    "monojet_SR_2018_bin19",
+    "monojet_SR_2018_bin20",
+    "monojet_SR_2018_bin21",
+  };
+  Manager()->AddCut("hem_veto_jets",  regions_2018);
+  cut_order.push_back("hem_veto_jets");
+  Manager()->AddCut("hem_veto_met",  regions_2018);
+  cut_order.push_back("hem_veto_met");
+
   // Sanity check: No duplicate cut definitions
   set<string> set_of_cuts( cut_order.begin(), cut_order.end() );
   assert(set_of_cuts.size() == cut_order.size());
@@ -119,7 +150,36 @@ void cms_exo_20_004::Finalize(const SampleFormat& summary, const std::vector<Sam
   // saving histos
   cout << "END   Finalization" << endl;
 }
-
+/*
+  In the 2018 data set, an eta-phi sector of
+  the HCAL is broken. We therefore have to
+  veto any event with a jet in this region
+  for this part of the data set.
+*/
+bool hem_veto_jets(vector<RecJetFormat> jets) {
+  for(auto const jet : jets) {
+     if(jet.pt()<30){
+       continue;
+     }
+     if(jet.eta()<-3.0 or jet.eta() > -1.3){
+       continue;
+     }
+     if (jet.phi()<-1.57 or jet.phi()> -0.87) {
+       continue;
+     }
+    return false;
+  }
+  return true;
+}
+/*
+  In the 2018 data set, an eta-phi sector of
+  the HCAL is broken. We therefore have to
+  veto any event with where MET phi points 
+  in this direction.
+*/
+bool hem_veto_met(float met_pt, float met_phi) {
+  return (met_pt > 470) or (met_phi > -0.62) or (met_phi<-1.62);
+}
 // -----------------------------------------------------------------------------
 // Execute
 // function called each time one event is read
@@ -169,14 +229,13 @@ bool cms_exo_20_004::Execute(SampleFormat& sample, const EventFormat& event)
   float leadak4_pt  = jets.size() > 0 ? jets.at(0).pt() : 0;
   float leadak4_eta = jets.size() > 0 ? jets.at(0).eta() : -999;
   bool veto_btag = not has_b_tag(jets, CUT_BTAG_PT_MIN, CUT_BTAG_ETA_MAX);
-  float ptmiss = event.rec()->MET().pt();
-
-
+  float met_pt = event.rec()->MET().pt();
+  float met_phi = event.rec()->MET().phi();
 
   // Histogram filling
   // Manager()->FillHisto("ptmiss", event.rec()->MET().pt() );
   // Cut application
-  if (not Manager()->ApplyCut(ptmiss>250,       "ptmiss")) return true;
+  if (not Manager()->ApplyCut(met_pt>250,       "ptmiss")) return true;
   if (not Manager()->ApplyCut(electrons.size() == 0,             "veto_electron")) return true;
   if (not Manager()->ApplyCut(muons.size() == 0,                 "veto_muon")) return true;
   if (not Manager()->ApplyCut(taus.size() == 0,                  "veto_tau")) return true;
@@ -189,10 +248,14 @@ bool cms_exo_20_004::Execute(SampleFormat& sample, const EventFormat& event)
   for(auto year : {2016, 2017, 2018}) {
     for(size_t ibin=0; ibin<monojet_bins.size()-1; ibin++){
       auto cut_name = monojet_bin_name(ibin, year);
-      bool pass = (ptmiss > monojet_bins.at(ibin)) && (ptmiss < monojet_bins.at(ibin+1));
+      bool pass = (met_pt > monojet_bins.at(ibin)) && (met_pt < monojet_bins.at(ibin+1));
       if (not Manager()->ApplyCut(pass, cut_name)) return true;
     }
   }
+  
+  // HEM veto (2018 only)
+  if (not Manager()->ApplyCut(hem_veto_met(met_pt, met_phi), "hem_veto_met")) return true;
+  if (not Manager()->ApplyCut(hem_veto_jets(jets), "hem_veto_jets")) return true;
 
   return true;
 }
