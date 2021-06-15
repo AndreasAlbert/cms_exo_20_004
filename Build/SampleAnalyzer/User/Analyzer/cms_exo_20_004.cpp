@@ -134,8 +134,6 @@ bool cms_exo_20_004::Initialize(const MA5::Configuration& cfg, const std::map<st
   set<string> set_of_cuts( cut_order.begin(), cut_order.end() );
   assert(set_of_cuts.size() == cut_order.size());
 
-  // Manager()->AddHisto("ptmiss", 15,0,1400, "monojet_SR");
-
   cout << "END   Initialization" << endl;
   return true;
 }
@@ -245,10 +243,35 @@ bool cms_exo_20_004::Execute(SampleFormat& sample, const EventFormat& event)
   if (not Manager()->ApplyCut(leadak4_pt>LEADAK4_PT_MIN,         "leadak4_pt")) return true;
   if (not Manager()->ApplyCut(fabs(leadak4_eta)<LEADAK4_ETA_MAX, "leadak4_eta")) return true;
 
+  // Verify that the random number will be uniform in [0,1]
+  assert(rand_dist.a()==0);
+  assert(rand_dist.b()==1);
+  float rand = rand_dist(rand_eng);
   for(auto year : {2016, 2017, 2018}) {
+    // Use random number for lumi weighting
+    // All regions will be normalized by MadAnalysis to 137 fb-1
+    // Here, we implement a per-region weight that corrects this
+    // down to the per-year luminosity.
+    // Each event is assigned sa either 2016, 2017 or 2018,
+    // so that there is no stat. overlap and as many generated
+    // events as possible are used.
+    bool pass_lumi_scaling = false;
+    if(year == 2016) {
+      // 36 fb-1
+      pass_lumi_scaling = rand <= 36. / 137;
+    } else if (year ==2017) {
+      // 41 fb-1
+      pass_lumi_scaling = rand > 36. / 137;
+      pass_lumi_scaling &= rand <= (36.+41.) / 137;
+    } else {
+      // 60 fb-1
+      pass_lumi_scaling = rand > (36.+41.) / 137;
+      pass_lumi_scaling &= rand <= 1;
+    }
+
     for(size_t ibin=0; ibin<monojet_bins.size()-1; ibin++){
       auto cut_name = monojet_bin_name(ibin, year);
-      bool pass = (met_pt > monojet_bins.at(ibin)) && (met_pt < monojet_bins.at(ibin+1));
+      bool pass = (met_pt > monojet_bins.at(ibin)) && (met_pt < monojet_bins.at(ibin+1)) && pass_lumi_scaling;
       if (not Manager()->ApplyCut(pass, cut_name)) return true;
     }
   }

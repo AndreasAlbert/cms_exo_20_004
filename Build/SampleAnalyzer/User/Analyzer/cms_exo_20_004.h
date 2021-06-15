@@ -1,6 +1,6 @@
 #ifndef analysis_cms_exo_20_004_h
 #define analysis_cms_exo_20_004_h
-
+#include <random>
 #include "SampleAnalyzer/Process/Analyzer/AnalyzerBase.h"
 
 namespace MA5
@@ -15,6 +15,12 @@ class cms_exo_20_004 : public AnalyzerBase
   virtual bool Execute(SampleFormat& sample, const EventFormat& event);
   void InitializeRegions();
  private:
+  // Random number generation is needed to model
+  // per-region event weights
+  // (stochastic selection)
+  std::random_device rand_device;
+  std::uniform_real_distribution<> rand_dist;
+  std::mt19937 rand_eng;
 };
 }
 
